@@ -1,0 +1,38 @@
+# ═══════════════════════════════════════════════════════
+# MinIO — Object storage configuration
+# ═══════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════
+
+- name: Configure MinIO
+  hosts: all
+  gather_facts: no
+
+  tasks:
+    - name: Ensure MinIO data directory exists
+      file:
+        path: "{{ data_mount_point }}/minio"
+        state: directory
+        mode: 0755
+
+    - name: Copy MinIO config
+      copy:
+        src: "{{ playbook_dir }}/../../docker/minio/config.env"
+        dest: "{{ docker_compose_dir }}/minio/config.env"
+        mode: 0600
+
+    - name: Deploy/restart MinIO
+      docker_compose:
+        project_src: "{{ docker_compose_dir }}"
+        files:
+          - "{{ docker_compose_file }}"
+        services:
+          - minio
+        state: present
+        restarted: yes
+
+    - name: Wait for MinIO to be ready
+      wait_for:
+        port: "{{ minio_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 60
+        sleep: 5

@@ -1,0 +1,36 @@
+name: Terraform
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+      - name: Terraform Format
+        run: terraform fmt -check
+        working-directory: terraform
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: terraform
+      - name: Terraform Plan
+        run: terraform plan
+        working-directory: terraform
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}

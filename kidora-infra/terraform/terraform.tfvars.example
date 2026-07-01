@@ -1,0 +1,31 @@
+# ═══════════════════════════════════════════════
+# Kidora Infrastructure — Terraform Variables
+# ═══════════════════════════════════════════════
+# Copy this file to terraform.tfvars and fill in your values:
+#   cp terraform.tfvars.example terraform.tfvars
+# ═══════════════════════════════════════════════
+
+# Required: Your Hetzner Cloud API token (generate at https://console.hetzner.cloud)
+hcloud_token = "YOUR_HCLOUD_API_TOKEN"
+
+# Server configuration
+server_name  = "kidora-prod"
+server_type  = "cx22"     # 2 vCPU, 4GB RAM — or "cx32" (4 vCPU, 8GB) for more load
+location     = "nbg1"     # Options: nbg1 (Nuremberg), fsn1 (Falkenstein), hel1 (Helsinki)
+os_image     = "ubuntu-24-04"
+
+# SSH key path (the public key to be installed on the server)
+ssh_public_key_path = "~/.ssh/id_rsa.pub"
+
+# ⚠️ SECURITY: Replace with your specific IP in production!
+# In production, restrict to your office/home IP: ["YOUR.IP.ADDRESS/32"]
+ssh_allowed_ips     = ["0.0.0.0/0"]
+firewall_allowed_ips = ["0.0.0.0/0"]
+
+# Application domain
+domain_name    = "kidora.example.com"
+email_for_ssl  = "admin@example.com"
+
+# Storage volumes (in GB) - set to 0 to disable Hetzner volumes
+backup_volume_size = 0
+data_volume_size   = 0

@@ -1,0 +1,24 @@
+name: Ansible
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'ansible/**'
+      - 'docker/**'
+
+jobs:
+  ansible-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ansible
+        run: |
+          pip install ansible ansible-lint
+      - name: Lint Playbooks
+        run: ansible-lint ansible/playbooks/*.yml
+      - name: Syntax Check
+        run: |
+          for playbook in ansible/playbooks/*.yml; do
+            ansible-playbook --syntax-check -i ansible/inventory/production.yml "$playbook"
+          done

@@ -1,0 +1,203 @@
+# ═══════════════════════════════════════════════════════
+# Bootstrap — Initial server setup
+# ═══════════════════════════════════════════════════════
+# Run this first after provisioning the server.
+# It installs Docker, mounts volumes, and sets up
+# the base directory structure.
+# ═══════════════════════════════════════════════════════
+
+- name: Bootstrap Kidora server
+  hosts: all
+  gather_facts: yes
+  vars:
+    volumes_to_mount:
+      - device: /dev/disk/by-id/scsi-0HC_Volume_{{ hcloud_volume_data_id | default('') }}
+        mount_point: "{{ data_mount_point }}"
+        fstype: ext4
+      - device: /dev/disk/by-id/scsi-0HC_Volume_{{ hcloud_volume_backup_id | default('') }}
+        mount_point: "{{ backup_mount_point }}"
+        fstype: ext4
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install system dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - ufw
+          - htop
+          - fail2ban
+          - python3-pip
+          - python3-venv
+          - unzip
+          - rsync
+          - cron
+          - logrotate
+        state: present
+
+    - name: Set timezone
+      timezone:
+        name: "{{ server_timezone | default('Africa/Tunis') }}"
+
+    - name: Configure fail2ban for SSH protection
+      template:
+        src: fail2ban-jail.local.j2
+        dest: /etc/fail2ban/jail.local
+        owner: root
+        group: root
+        mode: 0644
+      notify: restart fail2ban
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+
+    - name: Allow SSH
+      ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+
+    - name: Allow HTTP and HTTPS
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - "80"
+        - "443"
+
+    - name: Ensure Docker is installed
+      shell: |
+        if ! command -v docker &> /dev/null; then
+          curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
+          sh /tmp/get-docker.sh
+          usermod -aG docker ubuntu
+        fi
+      args:
+        creates: /usr/bin/docker
+
+    - name: Ensure Docker Compose is installed
+      get_url:
+        url: "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64"
+        dest: /usr/local/bin/docker-compose
+        mode: 0755
+
+    - name: Enable and start Docker
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    # ── Volume Mounting ──────────────────────────
+    - name: Check if data volume is formatted
+      filesystem:
+        fstype: ext4
+        dev: "{{ volumes_to_mount[0].device }}"
+      ignore_errors: yes
+      register: data_volume_fs
+
+    - name: Create data mount point
+      file:
+        path: "{{ data_mount_point }}"
+        state: directory
+        mode: 0755
+
+    - name: Mount data volume
+      mount:
+        src: "{{ volumes_to_mount[0].device }}"
+        path: "{{ data_mount_point }}"
+        fstype: ext4
+        opts: defaults,noatime
+        state: mounted
+
+    - name: Create backup mount point
+      file:
+        path: "{{ backup_mount_point }}"
+        state: directory
+        mode: 0755
+
+    - name: Mount backup volume
+      mount:
+        src: "{{ volumes_to_mount[1].device }}"
+        path: "{{ backup_mount_point }}"
+        fstype: ext4
+        opts: defaults,noatime
+        state: mounted
+
+    # ── Directory Structure ──────────────────────
+    - name: Create Docker Compose directory
+      file:
+        path: "{{ docker_compose_dir }}"
+        state: directory
+        mode: 0755
+
+    - name: Create subdirectories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: 0755
+      loop:
+        - "{{ docker_compose_dir }}/postgres"
+        - "{{ docker_compose_dir }}/minio"
+        - "{{ docker_compose_dir }}/traefik"
+        - "{{ docker_compose_dir }}/traefik/dynamic"
+        - "{{ docker_compose_dir }}/prometheus"
+        - "{{ docker_compose_dir }}/grafana"
+        - "{{ docker_compose_dir }}/loki"
+        - "{{ docker_compose_dir }}/promtail"
+        - "{{ docker_compose_dir }}/alertmanager"
+        - "{{ docker_compose_dir }}/uploads"
+        - "{{ docker_compose_dir }}/scripts"
+
+    - name: Create data subdirectories on volume
+      file:
+        path: "{{ data_mount_point }}/{{ item }}"
+        state: directory
+        mode: 0755
+      loop:
+        - postgres
+        - minio
+        - uploads
+        - prometheus
+        - grafana
+        - loki
+
+    - name: Create backup subdirectories
+      file:
+        path: "{{ backup_mount_point }}/{{ item }}"
+        state: directory
+        mode: 0755
+      loop:
+        - postgres
+        - uploads
+        - configs
+
+    # ── Docker Login (if needed for private registry) ──
+    # Uncomment if you use a private Docker registry
+    # - name: Login to Docker registry
+    #   docker_login:
+    #     registry_url: "ghcr.io"
+    #     username: "{{ ghcr_username }}"
+    #     password: "{{ ghcr_token }}"
+
+  handlers:
+    - name: restart fail2ban
+      systemd:
+        name: fail2ban
+        state: restarted
+
+    - name: restart sshd
+      systemd:
+        name: sshd
+        state: restarted

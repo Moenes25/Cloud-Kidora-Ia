@@ -1,0 +1,15 @@
+{
+    "title": "Docker Containers",
+    "panels": [
+        {
+            "title": "Container Status",
+            "type": "table",
+            "datasource": "Prometheus",
+            "targets": [
+                {
+                    "expr": "up"
+                }
+            ]
+        }
+    ]
+}
