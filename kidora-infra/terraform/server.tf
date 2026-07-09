@@ -1,66 +1,32 @@
 # ═══════════════════════════════════════════════════════
-# Server — Single Hetzner Cloud server for Kidora
+# Server — Vultr Cloud server for Kidora
 # ═══════════════════════════════════════════════════════
 # This server runs the entire stack via Docker Compose.
+# Using the lowest tier: vc2-1c-1gb (1 vCPU, 1GB RAM, 25GB SSD)
 # ═══════════════════════════════════════════════════════
 
 # Import your SSH public key
-resource "hcloud_ssh_key" "default" {
-  name       = "${var.server_name}-key"
-  public_key = file(var.ssh_public_key_path)
-  labels     = local.common_labels
+# Replace the ssh_key content below with your actual public key
+resource "vultr_ssh_key" "default" {
+  name    = "${var.server_name}-key"
+  ssh_key = var.ssh_public_key
 }
 
 # Create the primary server
-resource "hcloud_server" "kidora" {
-  name        = var.server_name
-  server_type = var.server_type
-  image       = var.os_image
-  location    = var.location
-  ssh_keys    = [hcloud_ssh_key.default.id]
-
-  # Enable backups (automated weekly backups by Hetzner)
-  backups = false
-
-  labels = merge(local.common_labels, {
-    role = "application-server"
-  })
-
-  # Attach firewall
-  firewall_ids = [hcloud_firewall.kidora.id]
-
-  # Attach to private network
-  network {
-    network_id = hcloud_network.kidora.id
-    ip         = "10.0.1.1"
-  }
-
-  # User data for initial bootstrap (optional — moved to Ansible for flexibility)
-  user_data = <<-EOF
-    #cloud-config
-    package_update: true
-    package_upgrade: true
-    packages:
-      - apt-transport-https
-      - ca-certificates
-      - curl
-      - gnupg
-      - lsb-release
-      - ufw
-      - htop
-      - fail2ban
-    runcmd:
-      - [ curl, -fsSL, https://get.docker.com, -o, /tmp/get-docker.sh ]
-      - [ sh, /tmp/get-docker.sh ]
-      - [ usermod, -aG, docker, ubuntu ]
-      - [ systemctl, enable, docker ]
-      - [ systemctl, start, docker ]
-      - [ curl, -L, "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)", -o, /usr/local/bin/docker-compose ]
-      - [ chmod, +x, /usr/local/bin/docker-compose ]
-  EOF
-
-  depends_on = [
-    hcloud_firewall.kidora,
-    hcloud_network.kidora
+resource "vultr_instance" "kidora" {
+  plan              = var.server_type
+  region            = var.location
+  os_id             = var.os_image
+  label             = var.server_name
+  ssh_key_ids       = [vultr_ssh_key.default.id]
+  firewall_group_id = vultr_firewall_group.kidora.id
+  
+  # Enable IPv6
+  enable_ipv6 = true
+  
+  tags = [
+    "project=${var.labels.project}",
+    "environment=${var.labels.environment}",
+    "managed-by=${var.labels.managed-by}"
   ]
 }

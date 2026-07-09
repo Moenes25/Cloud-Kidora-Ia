@@ -1,65 +1,100 @@
 # ═══════════════════════════════════════════════════════
 # Firewall — Security rules for the server
 # ═══════════════════════════════════════════════════════
-# Rules are applied to the server after creation.
+# Vultr firewall groups define rules applied to instances.
+# Rules use IP addresses (not CIDR) with subnet_size for subnet mask.
 # ═══════════════════════════════════════════════════════
 
-resource "hcloud_firewall" "kidora" {
-  name   = "${var.server_name}-firewall"
-  labels = local.common_labels
+resource "vultr_firewall_group" "kidora" {
+  description = "Kidora application firewall rules"
+}
 
-  # SSH — restricted to specific IPs
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "22"
-    source_ips = var.ssh_allowed_ips
-  }
+# SSH - Port 22 (IPv4) - allow all
+resource "vultr_firewall_rule" "ssh" {
+  firewall_group_id = vultr_firewall_group.kidora.id
+  ip_type           = "v4"
+  protocol          = "tcp"
+  port              = "22"
+  subnet            = "0.0.0.0"
+  subnet_size       = 0
+}
 
-  # HTTP/HTTPS — open to the world
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "80"
-    source_ips = var.firewall_allowed_ips
-  }
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "443"
-    source_ips = var.firewall_allowed_ips
-  }
+# HTTP - Port 80 (IPv4) - allow all
+resource "vultr_firewall_rule" "http" {
+  firewall_group_id = vultr_firewall_group.kidora.id
+  ip_type           = "v4"
+  protocol          = "tcp"
+  port              = "80"
+  subnet            = "0.0.0.0"
+  subnet_size       = 0
+}
 
-  # Prometheus/Grafana monitoring (optional — restrict if needed)
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "9090"
-    source_ips = var.firewall_allowed_ips
-  }
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "3000"
-    source_ips = var.firewall_allowed_ips
-  }
+# HTTPS - Port 443 (IPv4) - allow all
+resource "vultr_firewall_rule" "https" {
+  firewall_group_id = vultr_firewall_group.kidora.id
+  ip_type           = "v4"
+  protocol          = "tcp"
+  port              = "443"
+  subnet            = "0.0.0.0"
+  subnet_size       = 0
+}
 
-  # Allow all outbound traffic
-  rule {
-    direction = "out"
-    protocol  = "tcp"
-    port      = "any"
-    destination_ips = ["0.0.0.0/0", "::/0"]
-  }
-  rule {
-    direction = "out"
-    protocol  = "udp"
-    port      = "any"
-    destination_ips = ["0.0.0.0/0", "::/0"]
-  }
-  rule {
-    direction = "out"
-    protocol  = "icmp"
-    destination_ips = ["0.0.0.0/0", "::/0"]
-  }
+# MinIO API - Port 9000 (IPv4) - allow all
+resource "vultr_firewall_rule" "minio" {
+  firewall_group_id = vultr_firewall_group.kidora.id
+  ip_type           = "v4"
+  protocol          = "tcp"
+  port              = "9000"
+  subnet            = "0.0.0.0"
+  subnet_size       = 0
+}
+
+# MinIO Console - Port 9001 (IPv4) - allow all
+resource "vultr_firewall_rule" "minio_console" {
+  firewall_group_id = vultr_firewall_group.kidora.id
+  ip_type           = "v4"
+  protocol          = "tcp"
+  port              = "9001"
+  subnet            = "0.0.0.0"
+  subnet_size       = 0
+}
+
+# Backend API - Port 8086 (IPv4) - allow all
+resource "vultr_firewall_rule" "backend" {
+  firewall_group_id = vultr_firewall_group.kidora.id
+  ip_type           = "v4"
+  protocol          = "tcp"
+  port              = "8086"
+  subnet            = "0.0.0.0"
+  subnet_size       = 0
+}
+
+# MongoDB - Port 27017 (IPv4) - allow all
+resource "vultr_firewall_rule" "mongodb" {
+  firewall_group_id = vultr_firewall_group.kidora.id
+  ip_type           = "v4"
+  protocol          = "tcp"
+  port              = "27017"
+  subnet            = "0.0.0.0"
+  subnet_size       = 0
+}
+
+# Outbound TCP - Any port
+resource "vultr_firewall_rule" "out_tcp" {
+  firewall_group_id = vultr_firewall_group.kidora.id
+  ip_type           = "v4"
+  protocol          = "tcp"
+  port              = "1-65535"
+  subnet            = "0.0.0.0"
+  subnet_size       = 0
+}
+
+# Outbound UDP - Any port
+resource "vultr_firewall_rule" "out_udp" {
+  firewall_group_id = vultr_firewall_group.kidora.id
+  ip_type           = "v4"
+  protocol          = "udp"
+  port              = "1-65535"
+  subnet            = "0.0.0.0"
+  subnet_size       = 0
 }

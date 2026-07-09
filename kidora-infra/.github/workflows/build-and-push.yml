@@ -1,0 +1,67 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+  workflow_dispatch:
+    inputs:
+      services:
+        description: 'Services to build and push (space-separated)'
+        required: false
+        default: 'backend frontend'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        run: |
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Backend
+        if: contains(github.event.inputs.services, 'backend') || github.event_name == 'push'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/client-kidora-backend:latest
+            ghcr.io/${{ github.repository_owner }}/client-kidora-backend:${{ steps.meta.outputs.sha_short }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/client-kidora-backend:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/client-kidora-backend:buildcache,mode=max
+
+      - name: Build and push Frontend
+        if: contains(github.event.inputs.services, 'frontend') || github.event_name == 'push'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/client-kidora-frontend:latest
+            ghcr.io/${{ github.repository_owner }}/client-kidora-frontend:${{ steps.meta.outputs.sha_short }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/client-kidora-frontend:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/client-kidora-frontend:buildcache,mode=max

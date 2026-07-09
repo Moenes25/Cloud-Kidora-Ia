@@ -1,41 +1,45 @@
-variable "hcloud_token" {
-  description = "Hetzner Cloud API token"
+# ═══════════════════════════════════════════════════════
+# Variables — Vultr Cloud Configuration
+# ═══════════════════════════════════════════════════════
+
+variable "vultr_api_key" {
+  description = "Vultr API key (can be set via VULTR_API_KEY env variable)"
   type        = string
   sensitive   = true
+  default     = "GJGFCYWLJQKFG3NKD5GM6GFAJX3YDDUENBGQ"
 }
 
 variable "server_name" {
-  description = "Name of the Hetzner server"
+  description = "Name of the Vultr server"
   type        = string
-  default     = "kidora-prod"
+  default     = "kidora-test"
 }
 
 variable "server_type" {
-  description = "Hetzner server type (CX22 = 2 vCPU, 4GB RAM, 40GB SSD)"
+  description = "Vultr server type - 'vc2-1c-1gb' is the lowest tier (1 vCPU, 1GB RAM)"
   type        = string
-  default     = "cx22"
+  default     = "vc2-1c-1gb"
 }
 
 variable "location" {
-  description = "Hetzner datacenter location"
+  description = "Vultr datacenter location"
   type        = string
-  default     = "nbg1"   # Nuremberg
+  default     = "ewr"   # New Jersey - change to your preferred region: lax (LA), sjc (Silicon Valley), etc.
 }
 
 variable "os_image" {
-  description = "OS image for the server"
+  description = "OS image ID for the server"
   type        = string
-  default     = "ubuntu-24.04"
+  default     = "1743"   # Ubuntu 24.04 x64 - see https://www.vultr.com/api/ for other images
 }
 
-variable "ssh_public_key_path" {
-  description = "Path to your SSH public key (~/.ssh/id_rsa.pub)"
+variable "ssh_public_key" {
+  description = "Your SSH public key content (contents of ~/.ssh/id_rsa.pub)"
   type        = string
-  default     = "~/.ssh/id_rsa.pub"
 }
 
 variable "firewall_allowed_ips" {
-  description = "List of IPs/CIDRs allowed to access SSH and admin interfaces"
+  description = "List of IPs/CIDRs allowed to access HTTP/HTTPS and admin interfaces"
   type        = list(string)
   default     = ["0.0.0.0/0"]   # ⚠️ Restrict this in production!
 }
@@ -58,16 +62,11 @@ variable "email_for_ssl" {
   default     = "admin@example.com"
 }
 
-variable "backup_volume_size" {
-  description = "Size of the backup volume in GB"
-  type        = number
-  default     = 0
-}
 
 variable "data_volume_size" {
-  description = "Size of the data volume (PostgreSQL, MinIO) in GB"
+  description = "Size of the data volume (MongoDB, MinIO) in GB"
   type        = number
-  default     = 0
+  default     = 10
 }
 
 variable "labels" {
@@ -75,7 +74,7 @@ variable "labels" {
   type        = map(string)
   default = {
     project     = "kidora"
-    environment = "production"
+    environment = "testing"
     managed-by  = "terraform"
   }
 }

@@ -1,21 +1,21 @@
 # ═══════════════════════════════════════════════
-# Kidora Infrastructure — Terraform Variables
+# Kidora Infrastructure — Terraform Variables (Vultr)
 # ═══════════════════════════════════════════════
 # Copy this file to terraform.tfvars and fill in your values:
 #   cp terraform.tfvars.example terraform.tfvars
 # ═══════════════════════════════════════════════
 
-# Required: Your Hetzner Cloud API token (generate at https://console.hetzner.cloud)
-hcloud_token = "YOUR_HCLOUD_API_TOKEN"
+# Required: Your Vultr API key (generate at https://my.vultr.com/settings/#api)
+vultr_api_key = "YOUR_VULTR_API_KEY"
 
-# Server configuration
-server_name  = "kidora-prod"
-server_type  = "cx22"     # 2 vCPU, 4GB RAM — or "cx32" (4 vCPU, 8GB) for more load
-location     = "nbg1"     # Options: nbg1 (Nuremberg), fsn1 (Falkenstein), hel1 (Helsinki)
-os_image     = "ubuntu-24-04"
+# Required: Your SSH public key (get with: cat ~/.ssh/id_rsa.pub)
+ssh_public_key = "ssh-rsa AAAA... your-key-here"
 
-# SSH key path (the public key to be installed on the server)
-ssh_public_key_path = "~/.ssh/id_rsa.pub"
+# Server configuration - using lowest tier for testing
+server_name  = "kidora-test"
+server_type  = "vc2-1c-1gb"     # 1 vCPU, 1GB RAM, 25GB SSD - lowest Vultr tier
+location     = "ewr"           # New Jersey - options: lax (LA), sjc (Silicon Valley), ams (Amsterdam), etc.
+os_image     = "1743"           # Ubuntu 24.04 x64 - see https://www.vultr.com/api/ for other OS images
 
 # ⚠️ SECURITY: Replace with your specific IP in production!
 # In production, restrict to your office/home IP: ["YOUR.IP.ADDRESS/32"]
@@ -26,6 +26,6 @@ firewall_allowed_ips = ["0.0.0.0/0"]
 domain_name    = "kidora.example.com"
 email_for_ssl  = "admin@example.com"
 
-# Storage volumes (in GB) - set to 0 to disable Hetzner volumes
-backup_volume_size = 0
-data_volume_size   = 0
+# Storage volumes (in GB) - kept small for testing
+backup_volume_size = 10   # 10GB for backups
+data_volume_size   = 25   # 25GB for MongoDB + MinIO data

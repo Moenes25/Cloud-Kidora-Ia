@@ -1,0 +1,36 @@
+---
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Self-Signed Certificate
+        run: |
+          # Create certificate file from GitHub secret
+          echo "${{ secrets.MY_CA_CERT }}" > ca.crt
+          # Copy to system trust store
+          sudo cp ca.crt /usr/local/share/ca-certificates/zot-ca.crt
+          # Update certificates
+          sudo update-ca-certificates
+
+      - name: Install Ansible
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install ansible
+          pip install community.docker
+
+      - name: Deploy MinIO and Zot Registry
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: false
+        run: |
+          ansible-playbook kidora-infra/ansible/playbooks/main.yml

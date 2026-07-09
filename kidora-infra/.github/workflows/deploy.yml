@@ -1,26 +1,55 @@
-name: Deploy
+name: Deploy to Production
 
 on:
   workflow_dispatch:
     inputs:
       services:
-        description: 'Services to update (space-separated)'
+        description: 'Services to deploy (space-separated)'
         required: false
         default: 'backend frontend'
+      environment:
+        description: 'Deployment environment'
+        required: false
+        default: 'production'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
+
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.4
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /opt/kidora
-            docker-compose -f docker-compose.prod.yml pull ${{ github.event.inputs.services }}
-            docker-compose -f docker-compose.prod.yml up -d --force-recreate ${{ github.event.inputs.services }}
-            docker image prune -f
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Install Ansible
+        run: |
+          pip install ansible
+
+      - name: Update Ansible inventory
+        run: |
+          cd ansible
+          sed -i "s/YOUR_SERVER_IP/${{ secrets.SERVER_HOST }}/g" inventory/production.yml
+
+      - name: Deploy with Ansible
+        run: |
+          cd ansible
+          ansible-playbook -i inventory/production.yml playbooks/bootstrap.yml
+          ansible-playbook -i inventory/production.yml playbooks/docker.yml
+          ansible-playbook -i inventory/production.yml playbooks/minio.yml
+          ansible-playbook -i inventory/production.yml playbooks/traefik.yml
+          ansible-playbook -i inventory/production.yml playbooks/postgres.yml
+          ansible-playbook -i inventory/production.yml playbooks/monitoring.yml || true
+
+      - name: Verify deployment
+        run: |
+          cd ansible
+          ansible-playbook -i inventory/production.yml playbooks/verify.yml || true
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          echo "Deployment completed with status: ${{ job.status }}"

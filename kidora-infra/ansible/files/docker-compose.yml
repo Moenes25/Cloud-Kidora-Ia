@@ -1,0 +1,40 @@
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: Rc@3é1fceIrF_3@àfd1&Zv
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - /data/minio:/data
+
+  mongodb:
+    image: mongo:8
+    container_name: mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: Rc@3é1fceIrF_3@àfd1&Zv
+    ports:
+      - "27017:27017"
+    volumes:
+      - /data/mongodb:/data/db
+
+  zot:
+    image: ghcr.io/project-zot/zot:latest
+    container_name: zot
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - /opt/zot/config.json:/etc/zot/config.json:ro
+      - /opt/zot/certs:/etc/zot/certs:ro
+      - /opt/storage:/var/lib/registry
+    command:
+      - serve
+      - /etc/zot/config.json

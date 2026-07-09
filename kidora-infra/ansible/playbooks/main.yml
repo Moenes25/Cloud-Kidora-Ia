@@ -1,0 +1,3 @@
+---
+- import_playbook: docker.yml
+- import_playbook: minio_db_zot.yml

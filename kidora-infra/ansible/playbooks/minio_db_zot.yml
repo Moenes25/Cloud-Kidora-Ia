@@ -1,0 +1,77 @@
+---
+- name: Deploy MinIO
+  hosts: all
+  become: true
+
+  tasks:
+
+    - name: Create data directory
+      file:
+        path: /data/minio
+        state: directory
+        mode: "0755"
+
+    - name: Create docker-compose directory
+      file:
+        path: /opt/minio
+        state: directory
+
+    - name: Remove existing zot directory if it exists
+      file:
+        path: /opt/zot
+        state: absent
+
+    - name: Create zot config directory
+      file:
+        path: /opt/zot
+        state: directory
+        mode: '0755'
+
+    - name: Copy Zot configuration
+      copy:
+        src: ../files/zot-config.json
+        dest: /opt/zot/config.json
+        mode: '0644'
+
+    - name: Create zot certs directory
+      file:
+        path: /opt/zot/certs
+        state: directory
+        mode: '0755'
+
+    - name: Copy TLS certificate
+      copy:
+        src: ../files/cert.pem
+        dest: /opt/zot/certs/cert.pem
+        mode: '0644'
+
+    - name: Copy TLS key
+      copy:
+        src: ../files/key.pem
+        dest: /opt/zot/certs/key.pem
+        mode: '0644'
+
+    - name: Install CA certificate on target host
+      copy:
+        src: ../files/cert.pem
+        dest: /usr/local/share/ca-certificates/zot-ca.crt
+        mode: '0644'
+
+    - name: Update CA certificates on target host
+      shell: update-ca-certificates
+
+    - name: Copy compose file
+      copy:
+        src: ../files/docker-compose.yml
+        dest: /opt/minio/docker-compose.yml
+
+    - name: Create registry storage
+      file:
+        path: /opt/storage
+        state: directory
+        mode: '0755'
+
+    - name: Start MinIO
+      community.docker.docker_compose_v2:
+        project_src: /opt/minio
+        state: present
