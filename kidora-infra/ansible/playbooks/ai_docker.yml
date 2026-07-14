@@ -1,0 +1,32 @@
+---
+- name: Deploy AI Backend
+  hosts: all
+  become: true
+  vars_files:
+    - ../group_vars/all.yml
+  tasks:
+    - name: Create AI backend uploads directory
+      file:
+        path: /opt/ai-backend/uploads
+        state: directory
+        mode: "0755"
+
+    - name: Copy AI docker-compose file
+      copy:
+        src: ../files/docker-compose.yml
+        dest: /opt/minio/docker-compose.yml
+        mode: "0644"
+
+    - name: Copy AI environment file
+      template:
+        src: ../templates/ai.env.j2
+        dest: /opt/minio/.env
+        mode: "0644"
+
+    - name: Deploy AI backend with docker-compose
+      community.docker.docker_compose_v2:
+        project_src: /opt/minio
+        services:
+          - ai-backend
+        state: present
+        recreate: always

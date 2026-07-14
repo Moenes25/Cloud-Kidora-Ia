@@ -1,3 +1,5 @@
 ---
 - import_playbook: docker.yml
 - import_playbook: minio_db_zot.yml
+- import_playbook: docompose.yml
+- import_playbook: ai_docker.yml

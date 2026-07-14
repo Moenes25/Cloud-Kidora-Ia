@@ -1,5 +1,5 @@
 ---
-- name: Deploy MinIO
+- name: Deploy MinIO, MongoDB, Zot and Nginx
   hosts: all
   become: true
 
@@ -29,8 +29,8 @@
 
     - name: Copy Zot configuration
       copy:
-        src: ../files/zot-config.json
-        dest: /opt/zot/config.json
+        src: ../files/config.json
+        dest: /opt/zot
         mode: '0644'
 
     - name: Create zot certs directory
@@ -39,31 +39,11 @@
         state: directory
         mode: '0755'
 
-    - name: Copy TLS certificate
-      copy:
-        src: ../files/cert.pem
-        dest: /opt/zot/certs/cert.pem
-        mode: '0644'
-
-    - name: Copy TLS key
-      copy:
-        src: ../files/key.pem
-        dest: /opt/zot/certs/key.pem
-        mode: '0644'
-
-    - name: Install CA certificate on target host
-      copy:
-        src: ../files/cert.pem
-        dest: /usr/local/share/ca-certificates/zot-ca.crt
-        mode: '0644'
-
-    - name: Update CA certificates on target host
-      shell: update-ca-certificates
-
     - name: Copy compose file
       copy:
         src: ../files/docker-compose.yml
         dest: /opt/minio/docker-compose.yml
+        mode: '0644'
 
     - name: Create registry storage
       file:
@@ -71,7 +51,19 @@
         state: directory
         mode: '0755'
 
-    - name: Start MinIO
+    - name: Create nginx config directory
+      file:
+        path: /opt/nginx/conf.d
+        state: directory
+        mode: '0755'
+
+    - name: Copy Nginx configuration with AI endpoint
+      copy:
+        src: ../files/nginx/conf.d/default.conf
+        dest: /opt/nginx/conf.d/default.conf
+        mode: '0644'
+
+    - name: Start services
       community.docker.docker_compose_v2:
         project_src: /opt/minio
         state: present
