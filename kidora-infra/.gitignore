@@ -1,33 +1,16 @@
 # Terraform
-terraform/.terraform*
-terraform/terraform.tfvars
-terraform/tfplan
-terraform/*.tfstate
-terraform/*.tfstate.*
+**/.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
 
-# Ansible
-ansible/**/vault.yml
-ansible/**/.vault_pass
-
-# Environment
+# Environment secrets
 .env
-*.env.local
+**/.env
 
-# Docker
-docker/data/
+# Ansible temporary files
+*.retry
 
-# Scripts
-*.log
-
-# OS
+# OS files
 .DS_Store
-Thumbs.db
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-group_vars/
-.env.*
+.terraform/
