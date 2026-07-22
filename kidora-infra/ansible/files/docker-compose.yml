@@ -59,22 +59,24 @@ services:
       - serve
       - /etc/zot/config.json
 
-  #  backend:
-  #    image: fra.vultrcr.com/kidora/kidora-backend:latest
-  #    container_name: backend
-  #    restart: unless-stopped
-  #    depends_on:
-  #      - mongodb
-  #      - minio
-  #    volumes:
-  #      - ./uploads:/app/uploads
-  #    expose:
-  #      - "8086"
-  #    networks:
-  #      - kidora_net
+  backend:
+    image: fra.vultrcr.com/kidora/kidora-backend:v1.0.0
+    container_name: backend
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - minio
+    volumes:
+      - ./uploads:/app/uploads
+    expose:
+      - "8086"
+    ports:
+      - "8086:8086"
+    networks:
+      - kidora_net
 
   frontend:
-    image: fra.vultrcr.com/kidora/kidora-frontend:latest
+    image: fra.vultrcr.com/kidora/kidora-frontend:v1.0.0
     container_name: frontend
     restart: unless-stopped
     depends_on:
@@ -87,7 +89,7 @@ services:
 
   # AI Backend Service - Using Vultr Registry
   ai-backend:
-    image: fra.vultrcr.com/kidora/kidora-ai-backend:latest
+    image: fra.vultrcr.com/kidora/kidora-ai-backend:v1.0.0
     container_name: kidora_ai_backend
     restart: unless-stopped
     expose:
@@ -124,27 +126,14 @@ services:
     restart: unless-stopped
     depends_on:
       - frontend
-      # - backend
+      - backend
       - ai-backend
-      - kidora-backend-mobile
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - /opt/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
-    networks:
-      - kidora_net
-
-  kidora-backend-mobile:
-    image: fra.vultrcr.com/kidora/backend/mobile:latest
-    container_name: kidora-backend-mobile
-    restart: unless-stopped
-    depends_on:
-      - mongodb
-      - minio
-    expose:
-      - "8086"
     networks:
       - kidora_net
 
