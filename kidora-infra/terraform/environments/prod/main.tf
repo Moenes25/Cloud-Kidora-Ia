@@ -65,7 +65,7 @@ module "network" {
 }
 
 module "load_balancer" {
-  source = "../../modules/load-balancer"
+  source  = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/load-balancer"
   name   = "kidora-prod-lb"
   region = var.region
 }
@@ -90,11 +90,38 @@ module "dns" {
   records = var.dns_records
 }
 
+resource "null_resource" "git_clone_repo" {
+  provisioner "local-exec" {
+    command = <<EOT
+      if [ ! -d "/tmp/infra-repo/.git" ]; then
+        git clone https://github.com/Moenes25/Cloud-Kidora-Ia.git /tmp/infra-repo
+      else
+        cd /tmp/infra-repo && git pull
+      fi
+    EOT
+    interpreter = ["/bin/bash", "-c"]
+  }
+}
+
 resource "local_file" "ansible_inventory" {
-  filename = "../../../ansible/inventories/prod/hosts.ini"
-  content = templatefile("inventory.tpl", {
+  filename = "/tmp/infra-repo/kidora-infra/ansible/inventories/prod/hosts.ini"
+  content = templatefile("/tmp/infra-repo/kidora-infra/terraform/environments/prod/inventory.tpl", {
     app_ip        = module.prod_servers["app"].ip_address
     database_ip   = module.prod_servers["database"].ip_address
     monitoring_ip = module.prod_servers["monitoring"].ip_address
   })
+
+  depends_on = [null_resource.git_clone_repo]
+}
+
+resource "null_resource" "ansible_trigger" {
+  depends_on = [module.prod_servers, local_file.ansible_inventory]
+  
+  triggers = {
+    inventory_hash = filesha256(local_file.ansible_inventory.filename)
+  }
+  
+  provisioner "local-exec" {
+    command = "sleep 45 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ${local_file.ansible_inventory.filename} /tmp/infra-repo/kidora-infra/ansible/playbooks/main.yml --tags production"
+  }
 }

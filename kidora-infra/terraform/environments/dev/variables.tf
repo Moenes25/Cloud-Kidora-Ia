@@ -18,12 +18,6 @@ variable "plan" {
   default     = "vc2-1c-2gb"
 }
 
-variable "master_plan" {
-  description = "Plan for K3s master server (bigger plan)"
-  type        = string
-  default     = "vc2-2c-4gb"
-}
-
 variable "os_id" {
   description = "Ubuntu 24.04"
   type        = number

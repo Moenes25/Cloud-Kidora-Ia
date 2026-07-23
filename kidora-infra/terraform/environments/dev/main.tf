@@ -4,20 +4,11 @@ module "ssh_key" {
   public_key = var.ssh_public_key
 }
 
-module "k3s_master" {
+module "dev_server" {
   source     = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/vultr-server"
-  name       = "k3s-master-01"
+  name       = "kidora-dev-server"
   region     = var.region
-  plan       = var.master_plan
-  os_id      = var.os_id
-  ssh_key_id = module.ssh_key.ssh_key_id
-}
-
-module "metric_server" {
-  source     = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/vultr-server"
-  name       = "k3s-master-metrics"
-  region     = var.region
-  plan       = var.master_plan
+  plan       = var.plan
   os_id      = var.os_id
   ssh_key_id = module.ssh_key.ssh_key_id
 }
@@ -72,12 +63,6 @@ module "firewall" {
   ]
 }
 
-module "object_storage" {
-  source  = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/object-storage"
-  name    = "kidora-dev-storage"
-  region  = var.region
-  cluster = var.storage_cluster
-}
 
 module "dns" {
   source  = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/dns"
@@ -85,9 +70,39 @@ module "dns" {
   records = var.dns_records
 }
 
+resource "null_resource" "git_clone_repo" {
+  provisioner "local-exec" {
+    command = <<EOT
+      if [ ! -d "/tmp/infra-repo/.git" ]; then
+        git clone https://github.com/Moenes25/Cloud-Kidora-Ia.git /tmp/infra-repo
+      else
+        cd /tmp/infra-repo && git pull
+      fi
+    EOT
+    interpreter = ["/bin/bash", "-c"]
+  }
+}
+
 resource "local_file" "ansible_inventory" {
-  filename = "../../../ansible/inventories/dev/hosts.ini"
-  content = templatefile("inventory.tpl", {
-    dev_server_ip = module.k3s_master.ip_address
+  filename = "/tmp/infra-repo/kidora-infra/ansible/inventories/dev/hosts.ini"
+  content = templatefile("/tmp/infra-repo/kidora-infra/terraform/environments/dev/inventory.tpl", {
+    dev_server_ip = module.dev_server.ip_address
   })
+
+  depends_on = [null_resource.git_clone_repo]
+}
+
+resource "null_resource" "ansible_trigger" {
+  depends_on = [module.dev_server, local_file.ansible_inventory]
+  
+  triggers = {
+    inventory_path = local_file.ansible_inventory.filename
+    server_ip      = module.dev_server.ip_address
+    playbook_hash  = filesha256("/tmp/infra-repo/kidora-infra/ansible/playbooks/main.yml")
+  }
+  
+  provisioner "local-exec" {
+    command = "sleep 30 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ${local_file.ansible_inventory.filename} /tmp/infra-repo/kidora-infra/ansible/playbooks/main.yml"
+  }
+}
 }
