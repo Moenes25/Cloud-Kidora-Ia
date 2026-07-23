@@ -84,8 +84,8 @@ resource "null_resource" "git_clone_repo" {
 }
 
 resource "local_file" "ansible_inventory" {
-  filename = "/tmp/infra-repo/kidora-infra/ansible/inventories/dev/hosts.ini"
-  content = templatefile("/tmp/infra-repo/kidora-infra/terraform/environments/dev/inventory.tpl", {
+  filename = "/tmp/infra-repo/kidora-infra/terraform/environments/dev/inventory.ini"
+  content = templatefile("${path.module}/inventory.tpl", {
     dev_server_ip = module.dev_server.ip_address
   })
 
@@ -98,7 +98,6 @@ resource "null_resource" "ansible_trigger" {
   triggers = {
     inventory_path = local_file.ansible_inventory.filename
     server_ip      = module.dev_server.ip_address
-    playbook_hash  = filesha256("/tmp/infra-repo/kidora-infra/ansible/playbooks/main.yml")
   }
   
   provisioner "local-exec" {
