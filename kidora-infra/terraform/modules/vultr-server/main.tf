@@ -5,4 +5,9 @@ resource "vultr_instance" "server" {
   os_id  = var.os_id
 
   label = var.name
-}   
+  vpc_ids = [
+    var.vpc_id
+  ]
+  firewall_group_id = var.firewall_id
+  ssh_key_id        = var.ssh_key_id
+}
