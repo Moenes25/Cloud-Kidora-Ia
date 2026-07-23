@@ -105,4 +105,4 @@ resource "null_resource" "ansible_trigger" {
     command = "sleep 30 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ${local_file.ansible_inventory.filename} /tmp/infra-repo/kidora-infra/ansible/playbooks/main.yml"
   }
 }
-}
+
