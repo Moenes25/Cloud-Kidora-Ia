@@ -1,0 +1,10 @@
+---
+- name: Deploy MongoDB using Helm
+  hosts: k3s_master
+  become: yes
+  gather_facts: yes
+  vars_files:
+    - ../inventories/dev/group_vars/all.yml
+    - ../inventories/dev/group_vars/k3s.yml
+  roles:
+    - mongodb

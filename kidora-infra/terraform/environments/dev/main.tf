@@ -4,14 +4,24 @@ module "ssh_key" {
   public_key = var.ssh_public_key
 }
 
-module "dev_server" {
+module "k3s_master" {
   source     = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/vultr-server"
-  name       = var.server_name
+  name       = "k3s-master-01"
   region     = var.region
-  plan       = var.plan
+  plan       = var.master_plan
   os_id      = var.os_id
   ssh_key_id = module.ssh_key.ssh_key_id
 }
+
+module "metric_server" {
+  source     = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/vultr-server"
+  name       = "k3s-master-metrics"
+  region     = var.region
+  plan       = var.master_plan
+  os_id      = var.os_id
+  ssh_key_id = module.ssh_key.ssh_key_id
+}
+
 
 module "firewall" {
   source = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/firewall"
@@ -30,11 +40,37 @@ module "firewall" {
       ip_type = "v4"
       subnet = "0.0.0.0"
       subnet_size = 0
-    }
+    },
+    {
+      protocol = "tcp"
+      port = "443"
+      ip_type = "v4"
+      subnet = "0.0.0.0"
+      subnet_size = 0
+    },
+    {
+      protocol = "tcp"
+      port = "6443"
+      ip_type = "v4"
+      subnet = "0.0.0.0"
+      subnet_size = 0
+    },
+    {
+      protocol = "tcp"
+      port = "9090"
+      ip_type = "v4"
+      subnet = "0.0.0.0"
+      subnet_size = 0
+    },
+    {
+      protocol = "tcp"
+      port = "3000"
+      ip_type = "v4"
+      subnet = "0.0.0.0"
+      subnet_size = 0
+    },
   ]
 }
-
-
 
 module "object_storage" {
   source  = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/object-storage"
@@ -52,6 +88,6 @@ module "dns" {
 resource "local_file" "ansible_inventory" {
   filename = "../../../ansible/inventories/dev/hosts.ini"
   content = templatefile("inventory.tpl", {
-    dev_server_ip = module.dev_server.ip_address
+    dev_server_ip = module.k3s_master.ip_address
   })
 }

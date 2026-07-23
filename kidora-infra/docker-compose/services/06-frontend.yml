@@ -1,0 +1,11 @@
+services:
+  frontend:
+    image: fra.vultrcr.com/kidora/kidora-frontend:v1.0.0
+    container_name: frontend
+    restart: unless-stopped
+    depends_on:
+      - ai-backend
+    expose:
+      - "80"
+    networks:
+      - kidora_net

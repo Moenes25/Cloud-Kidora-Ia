@@ -1,0 +1,54 @@
+---
+- name: Ensure Helm is installed
+  import_role:
+    name: helm
+
+- name: Add Zot Helm repository
+  shell: helm repo add zot https://charts.project-zot.org/
+  args:
+    creates: /tmp/zot_repo_added
+
+- name: Update Helm repositories
+  command: helm repo update
+
+- name: Create Zot namespace
+  kubernetes.core.k8s:
+    name: zot
+    kind: Namespace
+    state: present
+
+- name: Create Zot configuration secret
+  template:
+    src: zot-config.json.j2
+    dest: /tmp/zot-config.json
+  register: zot_config_file
+
+- name: Create Zot config Secret from file
+  shell: |
+    kubectl create secret generic zot-config \
+      --namespace zot \
+      --from-file=config.json=/tmp/zot-config.json \
+      --dry-run=client -o yaml | kubectl apply -f -
+  register: zot_secret_created
+  ignore_errors: yes
+
+- name: Deploy Zot using Helm
+  shell: |
+    helm upgrade --install zot zot/zot \
+      --namespace zot \
+      --create-namespace \
+      --set persistence.storageClass={{ storage_class | default('local-path') }} \
+      --set persistence.size={{ zot_persistence_size | default('20Gi') }} \
+      --set service.type=ClusterIP \
+      --set service.port=5000 \
+      --set config.existingSecret=zot-config \
+      --set resources.requests.memory={{ zot_memory_request | default('256Mi') }} \
+      --set resources.requests.cpu={{ zot_cpu_request | default('100m') }} \
+      --wait
+  register: zot_install
+
+- name: Display Zot connection info
+  debug:
+    msg:
+      - "Zot deployed successfully"
+      - "Registry URL: http://zot.zot.svc.cluster.local:5000"

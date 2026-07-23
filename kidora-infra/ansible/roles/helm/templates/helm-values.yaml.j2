@@ -1,0 +1,21 @@
+# Helm values template
+# This file can be used as a base for Helm chart values
+
+global:
+  storageClass: "{{ storage_class | default('local-path') }}"
+
+ingress-nginx:
+  controller:
+    service:
+      type: LoadBalancer
+      ports:
+        http: 80
+        https: 443
+{% if load_balancer_ip is defined %}
+    loadBalancerIP: "{{ load_balancer_ip }}"
+{% endif %}
+
+bitnami:
+  common:
+    service:
+      type: ClusterIP

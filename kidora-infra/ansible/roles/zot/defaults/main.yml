@@ -1,0 +1,9 @@
+---
+# Zot role defaults
+
+zot_persistence_size: "20Gi"
+zot_memory_request: "256Mi"
+zot_cpu_request: "100m"
+zot_memory_limit: "512Mi"
+zot_cpu_limit: "500m"
+storage_class: "local-path"

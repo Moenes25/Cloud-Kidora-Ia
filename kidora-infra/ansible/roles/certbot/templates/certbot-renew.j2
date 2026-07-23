@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+# Certbot automatic renewal cron job
+# Managed by Ansible - DO NOT EDIT MANUALLY
+
+{% if certbot_renewal_frequency == "daily" %}
+0 0 * * * root certbot renew --quiet --post-hook "systemctl reload nginx"
+{% elif certbot_renewal_frequency == "weekly" %}
+0 0 * * 0 root certbot renew --quiet --post-hook "systemctl reload nginx"
+{% else %}
+0 0 * * * root certbot renew --quiet --post-hook "systemctl reload nginx"
+{% endif %}

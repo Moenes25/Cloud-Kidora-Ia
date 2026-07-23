@@ -1,0 +1,18 @@
+---
+# Helm defaults
+helm_version: "3.x"
+helm_repos:
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+  - name: ingress-nginx
+    url: https://kubernetes.github.io/ingress-nginx
+  - name: minio
+    url: https://charts.min.io/
+  - name: zot
+    url: https://charts.project-zot.org/
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+  - name: open-telemetry
+    url: https://open-telemetry.github.io/opentelemetry-helm-charts

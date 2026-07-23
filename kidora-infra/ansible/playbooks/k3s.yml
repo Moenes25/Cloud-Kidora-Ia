@@ -1,0 +1,30 @@
+---
+- name: Install and configure K3s
+  hosts: k3s_master
+  become: yes
+  gather_facts: yes
+  vars_files:
+    - ../inventories/dev/group_vars/all.yml
+    - ../inventories/dev/group_vars/k3s.yml
+  roles:
+    - k3s_master
+
+- name: Join K3s workers to cluster
+  hosts: k3s_workers
+  become: yes
+  gather_facts: yes
+  vars_files:
+    - ../inventories/dev/group_vars/all.yml
+    - ../inventories/dev/group_vars/k3s.yml
+  roles:
+    - k3s_worker
+
+- name: Deploy monitoring stack on K3s master
+  hosts: k3s_master
+  become: yes
+  gather_facts: yes
+  vars_files:
+    - ../inventories/dev/group_vars/all.yml
+    - ../inventories/dev/group_vars/k3s.yml
+  roles:
+    - monitoring

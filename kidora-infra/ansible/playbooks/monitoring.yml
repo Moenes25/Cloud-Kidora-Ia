@@ -1,0 +1,10 @@
+---
+- name: Deploy full monitoring stack (Prometheus, Grafana, Loki, Zipkin, OTel, cAdvisor, MongoDB Exporter)
+  hosts: k3s_master
+  become: yes
+  gather_facts: yes
+  vars_files:
+    - ../inventories/dev/group_vars/all.yml
+    - ../inventories/dev/group_vars/k3s.yml
+  roles:
+    - monitoring

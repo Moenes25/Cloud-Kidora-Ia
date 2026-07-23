@@ -1,0 +1,6 @@
+---
+- name: Obtain and manage SSL certificates with Let's Encrypt
+  hosts: all
+  become: true
+  roles:
+    - certbot

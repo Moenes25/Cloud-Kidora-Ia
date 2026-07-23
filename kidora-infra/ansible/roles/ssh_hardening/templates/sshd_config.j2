@@ -1,0 +1,79 @@
+# {{ ansible_managed }}
+# SSH Server Configuration - Hardened
+# Managed by Ansible - DO NOT EDIT MANUALLY
+
+# Port
+Port {{ ssh_port }}
+
+# Protocol
+Protocol 2
+
+# Authentication
+PermitRootLogin {{ ssh_permit_root_login }}
+PasswordAuthentication {{ ssh_password_authentication }}
+PubkeyAuthentication {{ ssh_pubkey_authentication }}
+ChallengeResponseAuthentication {{ ssh_challenge_response_auth }}
+PermitEmptyPasswords {{ ssh_empty_passwords }}
+KerberosAuthentication {{ ssh_kerberos_authentication }}
+GSSAPIAuthentication {{ ssh_gssapi_authentication }}
+HostbasedAuthentication {{ ssh_hostbased_authentication }}
+IgnoreRhosts {{ ssh_ignore_rhosts }}
+RhostsRSAAuthentication {{ ssh_rhosts_rsa_authentication }}
+
+# Access Control
+{% if ssh_allow_users != "" %}
+AllowUsers {{ ssh_allow_users }}
+{% endif %}
+{% if ssh_allow_groups != "" %}
+AllowGroups {{ ssh_allow_groups }}
+{% endif %}
+{% if ssh_deny_users != "" %}
+DenyUsers {{ ssh_deny_users }}
+{% endif %}
+{% if ssh_deny_groups != "" %}
+DenyGroups {{ ssh_deny_groups }}
+{% endif %}
+
+# Connection Settings
+MaxAuthTries {{ ssh_max_auth_tries }}
+MaxSessions {{ ssh_max_sessions }}
+MaxStartups {{ ssh_max_startups }}
+LoginGraceTime {{ ssh_login_grace_time }}
+ClientAliveInterval {{ ssh_client_alive_interval }}
+ClientAliveCountMax {{ ssh_client_alive_count_max }}
+TCPKeepAlive {{ ssh_tcp_keep_alive }}
+Compression {{ ssh_compression }}
+
+# Forwarding
+X11Forwarding {{ ssh_x11_forwarding }}
+AllowAgentForwarding {{ ssh_allow_agent_forwarding }}
+AllowTcpForwarding {{ ssh_allow_tcp_forwarding }}
+GatewayPorts {{ ssh_gateway_ports }}
+PermitTunnel {{ ssh_permit_tunnel }}
+
+# Logging
+LogLevel {{ ssh_log_level }}
+SyslogFacility {{ ssh_syslog_facility }}
+
+# Ciphers and Algorithms
+Ciphers {{ ssh_ciphers }}
+KexAlgorithms {{ ssh_kex_algorithms }}
+MACs {{ ssh_macs }}
+HostKeyAlgorithms {{ ssh_host_key_algorithms }}
+
+# Other Security Settings
+PrintMotd {{ ssh_print_motd }}
+PrintLastLog {{ ssh_print_last_log }}
+UsePAM {{ ssh_use_pam }}
+StrictModes {{ ssh_strict_modes }}
+PermitUserEnvironment {{ ssh_permit_user_environment }}
+
+# Subsystem
+Subsystem sftp /usr/lib/openssh/sftp-server
+
+# Use only SSH protocol 2
+HostKey /etc/ssh/ssh_host_ed25519_key
+HostKey /etc/ssh/ssh_host_rsa_key
+
+# Disable unused authentication methods
+AuthenticationMethods publickey

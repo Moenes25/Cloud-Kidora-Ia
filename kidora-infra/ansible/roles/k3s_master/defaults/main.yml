@@ -1,0 +1,7 @@
+k3s_version: "v1.33.3+k3s1"
+
+k3s_disable_components:
+  - traefik
+
+k3s_server_extra_args:
+  - "--write-kubeconfig-mode=644"

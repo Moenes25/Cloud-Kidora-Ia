@@ -1,0 +1,86 @@
+---
+- name: Install K3s server on master node
+  hosts: k3s_master
+  become: true
+  tasks:
+
+    - name: Disable swap (required for K3s)
+      command: swapoff -a
+      changed_when: false
+
+    - name: Remove swap from fstab
+      lineinfile:
+        path: /etc/fstab
+        regexp: 'swap'
+        state: absent
+
+    - name: Install prerequisites (curl, socat, conntrack)
+      apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      loop:
+        - curl
+        - socat
+        - conntrack
+
+    - name: Install K3s server using official script
+      shell: curl -sfL https://get.k3s.io | sh -s - server --node-name {{ inventory_hostname }} --disable traefik --cluster-init
+      args:
+        creates: /usr/local/bin/k3s
+      environment:
+        INSTALL_K3S_VERSION: "{{ k3s_version | default('v1.28.4+k3s1') }}"
+
+    - name: Ensure K3s service is running and enabled
+      systemd:
+        name: k3s
+        state: started
+        enabled: true
+
+    - name: Wait for K3s to be ready
+      wait_for:
+        path: /etc/rancher/k3s/k3s.yaml
+        state: present
+        timeout: 120
+
+    - name: Create kubeconfig directory for the deploying user
+      file:
+        path: /home/{{ ansible_user }}/.kube
+        state: directory
+        mode: '0700'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Copy admin kubeconfig to the deploying user
+      copy:
+        remote_src: true
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /home/{{ ansible_user }}/.kube/config
+        mode: '0600'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Set KUBECONFIG environment variable
+      lineinfile:
+        path: /home/{{ ansible_user }}/.bashrc
+        line: export KUBECONFIG=/home/{{ ansible_user }}/.kube/config
+        create: true
+
+    - name: Retrieve K3s token for worker joining
+      slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_token
+
+    - name: Set K3s token fact
+      set_fact:
+        k3s_node_token: "{{ k3s_token.content | b64decode | regex_replace('\\n', '') }}"
+
+    - name: Retrieve master server IP
+      set_fact:
+        master_ip: "{{ hostvars[inventory_hostname]['ansible_host'] | default(hostvars[inventory_hostname]['ansible_default_ipv4']['address']) }}"
+
+    - name: Display K3s master join information
+      debug:
+        msg:
+          - "K3s master node is ready at: {{ master_ip }}:6443"
+          - "Worker join token: {{ k3s_node_token }}"

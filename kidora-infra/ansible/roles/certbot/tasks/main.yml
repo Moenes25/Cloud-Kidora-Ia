@@ -1,0 +1,76 @@
+---
+- name: Add certbot PPA for Ubuntu
+  apt_repository:
+    repo: "ppa:certbot/certbot"
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Install certbot and nginx plugin
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - certbot
+    - python3-certbot-nginx
+  when: certbot_install_nginx_plugin
+
+- name: Install certbot (without nginx plugin)
+  apt:
+    name: certbot
+    state: present
+  when: not certbot_install_nginx_plugin
+
+- name: Create webroot directory for standalone mode
+  file:
+    path: "{{ certbot_webroot_path }}"
+    state: directory
+    mode: "0755"
+  when: not certbot_install_nginx_plugin
+
+- name: Obtain SSL certificate using nginx plugin
+  command: >
+    certbot --nginx
+    -d {{ item }}
+    --non-interactive
+    --agree-tos
+    --email {{ certbot_email }}
+    --redirect
+  loop: "{{ certbot_domains }}"
+  register: certbot_nginx_result
+  changed_when: "'Congratulations!' in certbot_nginx_result.stdout"
+  when: certbot_install_nginx_plugin
+
+- name: Obtain SSL certificate using standalone mode
+  command: >
+    certbot certonly
+    --standalone
+    -d {{ item }}
+    --non-interactive
+    --agree-tos
+    --email {{ certbot_email }}
+  loop: "{{ certbot_domains }}"
+  register: certbot_standalone_result
+  changed_when: "'Congratulations!' in certbot_standalone_result.stdout"
+  when: not certbot_install_nginx_plugin
+
+- name: Set up automatic renewal
+  template:
+    src: certbot-renew.j2
+    dest: /etc/cron.d/certbot-renew
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    certbot_renewal_frequency: "{{ certbot_renewal_frequency }}"
+
+- name: Enable certbot timer (systemd)
+  systemd:
+    name: certbot.timer
+    enabled: yes
+    state: started
+  ignore_errors: yes

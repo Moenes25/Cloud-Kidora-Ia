@@ -1,0 +1,99 @@
+---
+- name: Ensure OpenSSH server is installed
+  apt:
+    name: openssh-server
+    state: present
+    update_cache: yes
+
+- name: Create SSH host key directories
+  file:
+    path: /etc/ssh
+    state: directory
+    mode: "0755"
+
+- name: Generate Ed25519 host key if missing
+  shell: |
+    if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
+      ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ""
+    fi
+  args:
+    creates: /etc/ssh/ssh_host_ed25519_key
+
+- name: Generate RSA host key if missing
+  shell: |
+    if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
+      ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N ""
+    fi
+  args:
+    creates: /etc/ssh/ssh_host_rsa_key
+
+- name: Set proper permissions on host keys
+  file:
+    path: "{{ item }}"
+    mode: "0600"
+    owner: root
+    group: root
+  loop:
+    - /etc/ssh/ssh_host_ed25519_key
+    - /etc/ssh/ssh_host_rsa_key
+
+- name: Copy hardened sshd_config
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0600"
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: restart sshd
+
+- name: Configure SSH client hardening
+  copy:
+    dest: /etc/ssh/ssh_config.d/10-hardening.conf
+    content: |
+      # SSH Client Hardening - Managed by Ansible
+      Host *
+          Protocol 2
+          ServerAliveInterval 300
+          ServerAliveCountMax 2
+          TCPKeepAlive no
+          Compression no
+          VerifyHostKeyDNS yes
+          StrictHostKeyChecking ask
+          Ciphers {{ ssh_ciphers }}
+          KexAlgorithms {{ ssh_kex_algorithms }}
+          MACs {{ ssh_macs }}
+          HostKeyAlgorithms {{ ssh_host_key_algorithms }}
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart sshd
+
+- name: Remove weak SSH configuration files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/ssh/ssh_host_dsa_key
+    - /etc/ssh/ssh_host_dsa_key.pub
+    - /etc/ssh/ssh_host_ecdsa_key
+    - /etc/ssh/ssh_host_ecdsa_key.pub
+
+- name: Configure fail2ban for SSH (if installed)
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: "0644"
+  when: ssh_fail2ban_enabled | default(true) | bool
+  notify: restart fail2ban
+  ignore_errors: yes
+
+- name: Ensure fail2ban is running
+  systemd:
+    name: fail2ban
+    enabled: yes
+    state: started
+  when: ssh_fail2ban_enabled | default(true) | bool
+  ignore_errors: yes

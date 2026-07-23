@@ -1,0 +1,25 @@
+[Unit]
+Description=K3s Server
+Documentation=https://k3s.io
+After=network-online.target
+
+[Service]
+Type=notify
+ExecStartPre=-/sbin/modprobe overlay
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStart=/usr/local/bin/k3s server \
+  --write-kubeconfig-mode 600 \
+  --tls-san {{ k3s_tls_san }} \
+  --kubelet-arg="config=/var/lib/kubelet/config.yaml"
+KillMode=process
+Delegate=yes
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

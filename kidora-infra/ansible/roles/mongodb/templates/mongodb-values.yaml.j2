@@ -1,0 +1,42 @@
+# MongoDB Helm chart values
+
+architecture: replicaset
+
+replicaCount: 3
+
+auth:
+  enabled: true
+  rootPassword: "{{ mongodb_root_password | default('changeme') }}"
+  username: "{{ mongodb_username | default('kidora') }}"
+  password: "{{ mongodb_password | default('changeme') }}"
+  database: "{{ mongodb_database | default('kidora') }}"
+
+commonConfiguration:
+  net:
+    bindIp: 0.0.0.0
+  systemLog:
+    destination: file
+    logAppend: true
+  storage:
+    dbPath: /data/db
+
+service:
+  type: ClusterIP
+  ports:
+    mongodb: 27017
+
+persistence:
+  enabled: true
+  storageClass: "{{ storage_class | default('local-path') }}"
+  size: {{ mongodb_persistence_size | default('10Gi') }}
+
+resources:
+  requests:
+    memory: {{ mongodb_memory_request | default('256Mi') }}
+    cpu: {{ mongodb_cpu_request | default('100m') }}
+  limits:
+    memory: {{ mongodb_memory_limit | default('512Mi') }}
+    cpu: {{ mongodb_cpu_limit | default('500m') }}
+
+metrics:
+  enabled: false

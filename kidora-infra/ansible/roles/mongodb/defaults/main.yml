@@ -1,0 +1,14 @@
+---
+# MongoDB role defaults
+
+mongodb_root_password: "changeme"
+mongodb_username: "kidora"
+mongodb_password: "changeme"
+mongodb_database: "kidora"
+mongodb_persistence_size: "10Gi"
+mongodb_memory_request: "256Mi"
+mongodb_cpu_request: "100m"
+mongodb_memory_limit: "512Mi"
+mongodb_cpu_limit: "500m"
+mongodb_service: "mongodb"
+storage_class: "local-path"

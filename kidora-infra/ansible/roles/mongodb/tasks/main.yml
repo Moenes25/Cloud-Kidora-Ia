@@ -1,0 +1,39 @@
+---
+- name: Ensure Helm is installed
+  import_role:
+    name: helm
+
+- name: Add Bitnami repository
+  shell: helm repo add bitnami https://charts.bitnami.com/bitnami
+  args:
+    creates: /tmp/bitnami_repo_added
+
+- name: Update Helm repositories
+  command: helm repo update
+
+- name: Create MongoDB namespace
+  kubernetes.core.k8s:
+    name: mongodb
+    kind: Namespace
+    state: present
+
+- name: Deploy MongoDB using Helm
+  shell: |
+    helm upgrade --install mongodb bitnami/mongodb \
+      --namespace mongodb \
+      --create-namespace \
+      --values {{ role_path }}/templates/mongodb-values.yaml.j2 \
+      --wait
+  register: mongodb_install
+
+- name: Get MongoDB admin password
+  shell: kubectl get secret --namespace mongodb mongodb -o jsonpath="{.data.mongodb-root-password}" | base64 --decode
+  register: mongodb_admin_password
+  changed_when: false
+
+- name: Display MongoDB connection info
+  debug:
+    msg:
+      - "MongoDB deployed successfully"
+      - "Admin password: {{ mongodb_admin_password.stdout }}"
+      - "Connection: mongodb://root:{{ mongodb_admin_password.stdout }}@mongodb-{{ mongodb_service | default('mongodb') }}.mongodb.svc.cluster.local:27017/"

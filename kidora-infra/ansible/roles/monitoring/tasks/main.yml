@@ -1,0 +1,333 @@
+---
+- name: Ensure Helm is installed
+  import_role:
+    name: helm
+
+# ============ REPOS ============
+- name: Add monitoring Helm repositories
+  shell: |
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo add grafana https://grafana.github.io/helm-charts
+    helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+    helm repo update
+  args:
+    creates: /tmp/monitoring_repos_added
+
+# ============ NAMESPACE ============
+- name: Create monitoring namespace
+  kubernetes.core.k8s:
+    name: monitoring
+    kind: Namespace
+    state: present
+
+# ============ PROMETHEUS STACK ============
+- name: Deploy kube-prometheus-stack (Prometheus + Grafana + AlertManager + kube-state-metrics)
+  shell: |
+    helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+      --namespace monitoring \
+      --create-namespace \
+      --set grafana.enabled=true \
+      --set grafana.adminPassword={{ grafana_admin_password | default('admin') }} \
+      --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+      --set prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues=false \
+      --set prometheus.prometheusSpec.replicas={{ prometheus_replicas | default(1) }} \
+      --set alertmanager.enabled=true \
+      --set alertmanager.alertmanagerSpec.replicas={{ alertmanager_replicas | default(1) }} \
+      --set kubeStateMetrics.enabled=true \
+      --set kubeStateMetrics.replicas={{ ksm_replicas | default(1) }} \
+      --wait
+  register: prometheus_stack_install
+
+- name: Display Prometheus stack info
+  debug:
+    msg:
+      - "Prometheus stack deployed"
+      - "Grafana: http://prometheus-grafana.monitoring.svc.cluster.local:80"
+      - "Prometheus: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+      - "AlertManager: http://prometheus-kube-prometheus-alertmanager.monitoring.svc.cluster.local:9093"
+
+# ============ LOKI + PROMTAIL ============
+- name: Deploy Loki (log aggregation)
+  shell: |
+    helm upgrade --install loki grafana/loki \
+      --namespace monitoring \
+      --create-namespace \
+      --set loki.auth_enabled=false \
+      --set loki.commonConfig.replication_factor=1 \
+      --set loki.storage.type=filesystem \
+      --set loki.storage.filesystem.chunks_directory=/var/loki/chunks \
+      --set loki.storage.filesystem.rules_directory=/var/loki/rules \
+      --set singleBinary.replicas=1 \
+      --wait
+  register: loki_install
+
+- name: Deploy Promtail (log collector)
+  shell: |
+    helm upgrade --install promtail grafana/promtail \
+      --namespace monitoring \
+      --create-namespace \
+      --set config.lokiAddress=http://loki:3100/loki/api/v1/push \
+      --set config.clients[0].url=http://loki:3100/loki/api/v1/push \
+      --wait
+  register: promtail_install
+
+- name: Display Loki info
+  debug:
+    msg:
+      - "Loki: http://loki.monitoring.svc.cluster.local:3100"
+      - "Promtail deployed on all nodes"
+
+# ============ ZIPKIN (Distributed Tracing) ============
+- name: Deploy Zipkin
+  shell: |
+    helm upgrade --install zipkin open-telemetry/opentelemetry-collector \
+      --namespace monitoring \
+      --create-namespace \
+      --set mode=deployment \
+      --set image.repository=openzipkin/zipkin \
+      --set image.tag=latest \
+      --set command=["java","-jar","/zipkin.jar"] \
+      --set config.exporters.zipkin.endpoint=http://zipkin:9411/api/v2/spans \
+      --set service.type=ClusterIP \
+      --set service.ports[0].port=9411 \
+      --set service.ports[0].name=http \
+      --wait
+  register: zipkin_install
+
+# ============ OPENTELEMETRY COLLECTOR ============
+- name: Deploy OpenTelemetry Collector
+  shell: |
+    cat << 'EOF' > /tmp/otel-collector-values.yaml
+mode: deployment
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  processors:
+    batch:
+      timeout: 1s
+      send_batch_size: 1024
+  exporters:
+    prometheus:
+      endpoint: 0.0.0.0:8889
+    zipkin:
+      endpoint: "http://zipkin:9411/api/v2/spans"
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [zipkin]
+      metrics:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [prometheus]
+EOF
+    helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+      --namespace monitoring \
+      --create-namespace \
+      --values /tmp/otel-collector-values.yaml \
+      --set mode=deployment \
+      --wait
+  register: otel_install
+
+- name: Display OpenTelemetry info
+  debug:
+    msg:
+      - "OTel Collector: http://otel-collector.monitoring.svc.cluster.local:4318"
+      - "OTel gRPC: otel-collector.monitoring.svc.cluster.local:4317"
+
+# ============ NODE EXPORTER (already included in kube-prometheus-stack) ============
+- name: Node Exporter is already deployed as part of kube-prometheus-stack
+  debug:
+    msg:
+      - "Node Exporter metrics available at :9100 on each node"
+      - "Scraped automatically by Prometheus"
+
+# ============ CADVISOR ============
+- name: Deploy cAdvisor as DaemonSet
+  shell: |
+    kubectl apply -f - <<EOF
+    apiVersion: apps/v1
+    kind: DaemonSet
+    metadata:
+      name: cadvisor
+      namespace: monitoring
+      labels:
+        app: cadvisor
+    spec:
+      selector:
+        matchLabels:
+          app: cadvisor
+      template:
+        metadata:
+          labels:
+            app: cadvisor
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "8080"
+        spec:
+          hostNetwork: true
+          containers:
+          - name: cadvisor
+            image: gcr.io/cadvisor/cadvisor:latest
+            args:
+              - -port=8080
+            resources:
+              requests:
+                memory: 200Mi
+                cpu: 150m
+              limits:
+                memory: 512Mi
+                cpu: 300m
+            volumeMounts:
+            - name: rootfs
+              mountPath: /rootfs
+              readOnly: true
+            - name: var-run
+              mountPath: /var/run
+              readOnly: true
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+            - name: docker
+              mountPath: /var/lib/docker
+              readOnly: true
+            - name: disk
+              mountPath: /dev/disk
+              readOnly: true
+          volumes:
+          - name: rootfs
+            hostPath:
+              path: /
+          - name: var-run
+            hostPath:
+              path: /var/run
+          - name: sys
+            hostPath:
+              path: /sys
+          - name: docker
+            hostPath:
+              path: /var/lib/docker
+          - name: disk
+            hostPath:
+              path: /dev/disk
+    EOF
+  register: cadvisor_install
+
+# ============ MONGODB EXPORTER ============
+- name: Deploy MongoDB Exporter
+  shell: |
+    helm upgrade --install mongodb-exporter prometheus-community/prometheus-mongodb-exporter \
+      --namespace monitoring \
+      --create-namespace \
+      --set mongodb.uri="mongodb://{{ mongodb_username | default('kidora') }}:{{ mongodb_password | default('changeme') }}@mongodb-{{ mongodb_service | default('mongodb') }}.mongodb.svc.cluster.local:27017/" \
+      --set serviceMonitor.enabled=true \
+      --set serviceMonitor.namespace=monitoring \
+      --wait
+  register: mongodb_exporter_install
+
+- name: Display MongoDB Exporter info
+  debug:
+    msg:
+      - "MongoDB Exporter deployed"
+      - "Metrics: http://mongodb-exporter.monitoring.svc.cluster.local:9216/metrics"
+
+# ============ SERVICE MONITORS FOR ALL EXPORTERS ============
+- name: Create ServiceMonitor for cAdvisor
+  kubernetes.core.k8s:
+    name: cadvisor-monitor
+    namespace: monitoring
+    kind: ServiceMonitor
+    state: present
+    definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: cadvisor-monitor
+        namespace: monitoring
+        labels:
+          release: prometheus
+      spec:
+        selector:
+          matchLabels:
+            app: cadvisor
+        endpoints:
+        - port: http
+          interval: 15s
+          path: /metrics
+
+- name: Create ServiceMonitor for Node Exporter
+  kubernetes.core.k8s:
+    name: node-exporter-monitor
+    namespace: monitoring
+    kind: ServiceMonitor
+    state: present
+    definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: node-exporter-monitor
+        namespace: monitoring
+        labels:
+          release: prometheus
+      spec:
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: exporter
+            app.kubernetes.io/name: node-exporter
+        endpoints:
+        - port: http-metrics
+          interval: 15s
+          path: /metrics
+
+- name: Create ServiceMonitor for OpenTelemetry Collector
+  kubernetes.core.k8s:
+    name: otel-collector-monitor
+    namespace: monitoring
+    kind: ServiceMonitor
+    state: present
+    definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: otel-collector-monitor
+        namespace: monitoring
+        labels:
+          release: prometheus
+      spec:
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: otel-collector
+        endpoints:
+        - port: metrics
+          interval: 15s
+          path: /metrics
+
+# ============ DASHBOARDS ============
+- name: Import Node Exporter dashboard into Grafana
+  shell: |
+    kubectl get secret prometheus-grafana -n monitoring -o jsonpath='{.data.admin-password}' | base64 -d
+  register: grafana_pass
+  changed_when: false
+
+- name: Display Grafana access info
+  debug:
+    msg:
+      - "=========================================="
+      - "MONITORING STACK DEPLOYED SUCCESSFULLY"
+      - "=========================================="
+      - "Grafana URL: http://prometheus-grafana.monitoring.svc.cluster.local:80"
+      - "Grafana admin: admin / {{ grafana_admin_password | default('admin') }}"
+      - "Prometheus: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+      - "Loki: http://loki.monitoring.svc.cluster.local:3100"
+      - "Zipkin: http://zipkin.monitoring.svc.cluster.local:9411"
+      - "OTel Collector gRPC: otel-collector.monitoring.svc.cluster.local:4317"
+      - "OTel Collector HTTP: otel-collector.monitoring.svc.cluster.local:4318"
+      - "cAdvisor: DaemonSet on all nodes"
+      - "MongoDB Exporter: http://mongodb-exporter.monitoring.svc.cluster.local:9216/metrics"
+      - "=========================================="

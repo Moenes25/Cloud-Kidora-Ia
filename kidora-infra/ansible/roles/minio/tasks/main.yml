@@ -1,0 +1,60 @@
+---
+- name: Ensure Helm is installed
+  import_role:
+    name: helm
+
+- name: Add MinIO Helm repository
+  shell: helm repo add minio https://charts.min.io/
+  args:
+    creates: /tmp/minio_repo_added
+
+- name: Update Helm repositories
+  command: helm repo update
+
+- name: Create MinIO namespace
+  kubernetes.core.k8s:
+    name: minio
+    kind: Namespace
+    state: present
+
+- name: Create MinIO root credentials secret
+  kubernetes.core.k8s:
+    name: minio-root-credentials
+    namespace: minio
+    kind: Secret
+    state: present
+    definition:
+      metadata:
+        name: minio-root-credentials
+        namespace: minio
+      type: Opaque
+      stringData:
+        rootUser: "{{ minio_root_user }}"
+        rootPassword: "{{ minio_root_password }}"
+
+- name: Deploy MinIO using Helm
+  shell: |
+    helm upgrade --install minio minio/minio \
+      --namespace minio \
+      --create-namespace \
+      --set persistence.storageClass={{ storage_class | default('local-path') }} \
+      --set persistence.size={{ minio_persistence_size | default('10Gi') }} \
+      --set rootUser={{ minio_root_user }} \
+      --set rootPassword={{ minio_root_password }} \
+      --set buckets[0].name=kidora \
+      --set buckets[0].policy=public \
+      --set buckets[0].purge=false \
+      --set service.type=ClusterIP \
+      --set resources.requests.memory={{ minio_memory_request | default('256Mi') }} \
+      --set resources.requests.cpu={{ minio_cpu_request | default('100m') }} \
+      --wait
+  register: minio_install
+
+- name: Display MinIO connection info
+  debug:
+    msg:
+      - "MinIO deployed successfully"
+      - "Console URL: http://minio.minio.svc.cluster.local:9001"
+      - "API URL: http://minio.minio.svc.cluster.local:9000"
+      - "Access Key: {{ minio_root_user }}"
+      - "Secret Key: {{ minio_root_password }}"

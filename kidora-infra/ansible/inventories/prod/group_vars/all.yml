@@ -1,0 +1,8 @@
+---
+# Firewall configuration - Production
+firewall_allowed_ports:
+  - 22
+  - 80
+  - 443
+
+firewall_default_policy: deny

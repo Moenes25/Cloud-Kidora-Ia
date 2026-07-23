@@ -1,0 +1,11 @@
+---
+# MinIO role defaults
+
+minio_root_user: "kidora_admin"
+minio_root_password: "changeme"
+minio_persistence_size: "10Gi"
+minio_memory_request: "256Mi"
+minio_cpu_request: "100m"
+minio_memory_limit: "512Mi"
+minio_cpu_limit: "500m"
+storage_class: "local-path"

@@ -1,0 +1,46 @@
+---
+- name: Install nginx
+  apt:
+    name: nginx
+    state: present
+    update_cache: yes
+
+- name: Ensure nginx directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /etc/nginx/sites-available
+    - /etc/nginx/sites-enabled
+    - /etc/nginx/conf.d
+
+- name: Remove default nginx site
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/nginx/sites-enabled/default
+    - /etc/nginx/sites-available/default
+
+- name: Deploy Kidora nginx configuration
+  template:
+    src: default.conf.j2
+    dest: /etc/nginx/sites-available/kidora
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+
+- name: Enable Kidora nginx site
+  file:
+    src: /etc/nginx/sites-available/kidora
+    dest: /etc/nginx/sites-enabled/kidora
+    state: link
+  notify: reload nginx
+
+- name: Ensure nginx is running and enabled
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes

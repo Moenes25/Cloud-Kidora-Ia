@@ -1,0 +1,21 @@
+---
+# Certbot configuration
+certbot_domains:
+  - kidora.freeddns.org
+
+certbot_email: "admin@kidora.com"
+
+# Installation options
+certbot_install_nginx_plugin: true
+certbot_install_apache_plugin: false
+
+# Certificate options
+certbot_agree_tos: true
+certbot_renewal_frequency: "daily"
+
+# Paths (must match nginx role)
+certbot_ssl_certificate: /etc/letsencrypt/live/kidora.freeddns.org-0001/fullchain.pem
+certbot_ssl_certificate_key: /etc/letsencrypt/live/kidora.freeddns.org-0001/privkey.pem
+
+# Webroot for standalone mode (if not using nginx plugin)
+certbot_webroot_path: /var/www/html

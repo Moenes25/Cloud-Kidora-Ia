@@ -3,3 +3,9 @@
 - import_playbook: minio_db_zot.yml
 - import_playbook: docompose.yml
 - import_playbook: ai_docker.yml
+- import_playbook: k3s.yml
+- import_playbook: helm.yml
+- import_playbook: mongodb.yml
+- import_playbook: minio.yml
+- import_playbook: zot.yml
+- import_playbook: monitoring.yml

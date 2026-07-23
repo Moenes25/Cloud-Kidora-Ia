@@ -1,19 +1,6 @@
 ---
-- name: Deploy MinIO
+- name: Install and configure Nginx reverse proxy
   hosts: all
   become: true
-
-  tasks:
-
-    - name: Create nginx config directory
-      ansible.builtin.file:
-        path: /opt/nginx/conf.d
-        state: directory
-        mode: '0755'
-
-
-    - name: Copy nginx configuration
-      ansible.builtin.copy:
-        src: ../files/nginx/conf.d/default.conf
-        dest: /opt/nginx/conf.d/default.conf
-        mode: '0644'
+  roles:
+    - nginx

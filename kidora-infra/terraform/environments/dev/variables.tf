@@ -18,6 +18,11 @@ variable "plan" {
   default     = "vc2-1c-2gb"
 }
 
+variable "master_plan" {
+  description = "Plan for K3s master server (bigger plan)"
+  type        = string
+  default     = "vc2-2c-4gb"
+}
 
 variable "os_id" {
   description = "Ubuntu 24.04"
@@ -42,17 +47,6 @@ variable "ssh_public_key" {
   type        = string
 }
 
-variable "volume_size" {
-  description = "Size of the block storage volume in GB"
-  type        = number
-  default     = 20
-}
-
-variable "storage_cluster" {
-  description = "Cluster ID for object storage"
-  type        = number
-  default     = 1
-}
 
 variable "dns_domain" {
   description = "DNS domain name"

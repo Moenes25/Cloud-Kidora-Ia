@@ -1,0 +1,42 @@
+---
+# Global variables for all environments
+
+# Firewall configuration - Dev
+firewall_allowed_ports:
+  - 22
+  - 80
+  - 443
+  - 6443
+  - 9090
+  - 3000
+  - 5000
+  - 9000
+  - 9001
+  - 27017
+  - 4317
+  - 4318
+
+firewall_default_policy: allow
+
+# Storage
+storage_class: "local-path"
+
+# MinIO
+minio_root_user: "kidora_admin"
+minio_root_password: "changeme"
+minio_persistence_size: "10Gi"
+
+# MongoDB
+mongodb_root_password: "changeme"
+mongodb_username: "kidora"
+mongodb_password: "changeme"
+mongodb_database: "kidora"
+mongodb_persistence_size: "10Gi"
+
+# Monitoring
+grafana_admin_password: "admin"
+prometheus_replicas: 1
+alertmanager_replicas: 1
+
+# Zot
+zot_persistence_size: "20Gi"

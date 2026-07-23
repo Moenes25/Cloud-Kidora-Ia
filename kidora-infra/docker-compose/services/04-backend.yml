@@ -1,0 +1,16 @@
+services:
+  backend:
+    image: fra.vultrcr.com/kidora/kidora-backend:v1.0.0
+    container_name: backend
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - minio
+    volumes:
+      - ./uploads:/app/uploads
+    expose:
+      - "8086"
+    ports:
+      - "8086:8086"
+    networks:
+      - kidora_net

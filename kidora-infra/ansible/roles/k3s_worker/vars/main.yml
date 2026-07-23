@@ -1,0 +1,2 @@
+---
+# No specific vars for k3s_worker, variables inherited from group_vars/k3s.yml

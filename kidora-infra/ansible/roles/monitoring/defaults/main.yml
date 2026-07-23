@@ -1,0 +1,15 @@
+---
+# Monitoring stack defaults
+
+# Grafana
+grafana_admin_password: "admin"
+
+# Prometheus
+prometheus_replicas: 1
+alertmanager_replicas: 1
+
+# Kube-State-Metrics
+ksm_replicas: 1
+
+# Storage
+storage_class: "local-path"
