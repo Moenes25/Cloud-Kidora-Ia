@@ -1,7 +1,5 @@
 resource "vultr_dns_domain" "domain" {
   domain = var.domain
-  ttl    = var.ttl
-  region = var.region
 }
 
 resource "vultr_dns_record" "records" {
@@ -11,6 +9,6 @@ resource "vultr_dns_record" "records" {
   type   = each.value.type
   name   = each.value.name
   data   = each.value.data
-  ttl    = each.value.ttl
+  ttl = lookup(each.value, "ttl", 300)
   priority = lookup(each.value, "priority", null)
 }

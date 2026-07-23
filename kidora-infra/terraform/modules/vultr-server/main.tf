@@ -9,5 +9,5 @@ resource "vultr_instance" "server" {
     var.vpc_id
   ]
   firewall_group_id = var.firewall_id
-  ssh_key_id        = var.ssh_key_id
+  ssh_key_ids       = var.ssh_key_id != null ? [var.ssh_key_id] : []
 }
