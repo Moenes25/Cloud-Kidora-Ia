@@ -1,28 +1,21 @@
 module "ssh_key" {
-  source     = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/ssh-key?ref=main"
+  source     = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/ssh-key"
   key_name   = var.ssh_key_name
   public_key = var.ssh_public_key
 }
 
-module "network" {
-  source = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/network?ref=main"
-  region = var.region
-  name   = "kidora-dev-network"
-}
-
 module "dev_server" {
-  source     = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/vultr-server?ref=main"
+  source     = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/vultr-server"
   name       = "kidora-dev-server"
   region     = var.region
   plan       = var.plan
   os_id      = var.os_id
-  vpc_id     = module.network.vpc_id
   ssh_key_id = module.ssh_key.ssh_key_id
 }
 
 
 module "firewall" {
-  source = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/firewall?ref=main"
+  source = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/firewall"
   firewall_name = "kidora-dev-firewall"
   rules = [
     {
@@ -72,7 +65,7 @@ module "firewall" {
 
 
 module "dns" {
-  source  = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/dns?ref=main"
+  source  = "git::https://github.com/Moenes25/Cloud-Kidora-Ia.git//kidora-infra/terraform/modules/dns"
   domain  = var.dns_domain
   records = var.dns_records
 }
