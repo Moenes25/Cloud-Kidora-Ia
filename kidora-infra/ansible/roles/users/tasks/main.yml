@@ -1,0 +1,104 @@
+---
+- name: Create kidora groups
+  group:
+    name: "{{ item.name }}"
+    gid: "{{ item.gid }}"
+    state: "{{ item.state }}"
+  loop: "{{ users_groups }}"
+
+- name: Create kidora users
+  user:
+    name: "{{ item.username }}"
+    group: "{{ item.group }}"
+    groups: "{{ item.groups | join(',') }}"
+    shell: "{{ item.shell }}"
+    create_home: "{{ item.create_home }}"
+    home: "{{ item.home }}"
+    comment: "{{ item.comment }}"
+    state: present
+  loop: "{{ users_list }}"
+
+- name: Set passwords for users (using generated random passwords)
+  shell: |
+    if [ ! -f /root/.kidora_users_passwords ]; then
+      touch /root/.kidora_users_passwords
+    fi
+    if ! grep -q "{{ item.username }}" /root/.kidora_users_passwords; then
+      PASS=$(openssl rand -base64 12)
+      echo "{{ item.username }}:$PASS" >> /root/.kidora_users_passwords
+      echo "{{ item.username }}:$PASS" | chpasswd
+    fi
+  loop: "{{ users_list }}"
+  no_log: true
+
+- name: Create kidora base directories
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ kidora_directories }}"
+
+- name: Configure sudoers for kidora_admin group
+  template:
+    src: kidora_admin_sudoers.j2
+    dest: /etc/sudoers.d/kidora_admin
+    owner: root
+    group: root
+    mode: "0440"
+    validate: 'visudo -cf %s'
+
+- name: Restrict shell access for dev users (no sudo)
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: "{{ item.username }} hard maxlogins 2"
+    create: yes
+  loop: "{{ users_list }}"
+  when: item.group == 'kidora_dev'
+
+- name: Set up SSH directory for each user
+  file:
+    path: "{{ item.home }}/.ssh"
+    state: directory
+    owner: "{{ item.username }}"
+    group: "{{ item.group }}"
+    mode: "0700"
+  loop: "{{ users_list }}"
+
+- name: Copy SSH authorized keys if present
+  copy:
+    src: "{{ item.username }}_authorized_keys"
+    dest: "{{ item.home }}/.ssh/authorized_keys"
+    owner: "{{ item.username }}"
+    group: "{{ item.group }}"
+    mode: "0600"
+  loop: "{{ users_list }}"
+  ignore_errors: yes
+
+- name: Set up .bashrc with welcome message for all users
+  copy:
+    content: |
+      # Kidora Infrastructure
+      echo "Welcome to Kidora Infrastructure"
+      echo "User: $(whoami)"
+      echo "Group: $(id -gn)"
+      echo "Date: $(date)"
+      echo ""
+    dest: "{{ item.home }}/.bashrc"
+    owner: "{{ item.username }}"
+    group: "{{ item.group }}"
+    mode: "0644"
+  loop: "{{ users_list }}"
+
+- name: Set up MOTD for kidora servers
+  copy:
+    content: |
+      ##############################################
+      #         Kidora Infrastructure              #
+      #         Unauthorized access prohibited      #
+      ##############################################
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: "0644"

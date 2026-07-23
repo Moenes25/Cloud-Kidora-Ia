@@ -1,0 +1,35 @@
+---
+# Groups configuration
+users_groups:
+  - name: kidora_admin
+    gid: 2000
+    state: present
+  - name: kidora_dev
+    gid: 2001
+    state: present
+
+# Admin sudoers configuration
+admin_sudoers_rules:
+  - "Cmnd_Alias DEPLOY = /usr/bin/terraform, /usr/bin/ansible-playbook, /usr/bin/kubectl, /usr/bin/docker, /usr/bin/systemctl * nginx, /usr/bin/systemctl * docker"
+  - "Cmnd_Alias ADMIN = /usr/bin/apt, /usr/bin/apt-get, /usr/sbin/reboot, /usr/sbin/shutdown, /usr/bin/journalctl"
+
+# Developer accessible directories
+dev_accessible_paths:
+  - /opt/kidora
+  - /var/log/kidora
+  - /home
+
+# Base directories for kidora
+kidora_directories:
+  - path: /opt/kidora/app
+    owner: kidora_admin
+    group: kidora_admin
+    mode: "0775"
+  - path: /opt/kidora/deployments
+    owner: kidora_admin
+    group: kidora_admin
+    mode: "0775"
+  - path: /var/log/kidora
+    owner: kidora_admin
+    group: kidora_dev
+    mode: "0775"

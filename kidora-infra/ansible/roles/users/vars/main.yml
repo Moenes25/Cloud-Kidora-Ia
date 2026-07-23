@@ -1,0 +1,38 @@
+---
+# Users definitions
+users_list:
+  - username: kidora_hassine
+    group: kidora_admin
+    groups: [kidora_admin, docker, sudo]
+    shell: /bin/bash
+    create_home: yes
+    home: /home/kidora_hassine
+    comment: "Kidora Hassine - Administrator"
+  - username: kidora_fatma
+    group: kidora_dev
+    groups: [kidora_dev]
+    shell: /bin/bash
+    create_home: yes
+    home: /home/kidora_fatma
+    comment: "Kidora Fatma - Developer"
+  - username: kidora_wael
+    group: kidora_dev
+    groups: [kidora_dev]
+    shell: /bin/bash
+    create_home: yes
+    home: /home/kidora_wael
+    comment: "Kidora Wael - Developer"
+  - username: kidora_youssef
+    group: kidora_dev
+    groups: [kidora_dev]
+    shell: /bin/bash
+    create_home: yes
+    home: /home/kidora_youssef
+    comment: "Kidora Youssef - Developer"
+  - username: kidora_ali
+    group: kidora_dev
+    groups: [kidora_dev]
+    shell: /bin/bash
+    create_home: yes
+    home: /home/kidora_ali
+    comment: "Kidora Ali - Developer"

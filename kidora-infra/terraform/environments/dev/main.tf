@@ -48,3 +48,10 @@ module "dns" {
   domain  = var.dns_domain
   records = var.dns_records
 }
+
+resource "local_file" "ansible_inventory" {
+  filename = "../../../ansible/inventories/dev/hosts.ini"
+  content = templatefile("inventory.tpl", {
+    dev_server_ip = module.dev_server.ip_address
+  })
+}
